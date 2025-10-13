@@ -2,6 +2,7 @@
 <model version="NetLogo 7.0.0" snapToGrid="true">
   <code><![CDATA[breed [bombeiros bombeiro]
 breed [vitimas vitima]
+turtles-own [energia]
 
 globals [x y ]
 
@@ -75,6 +76,11 @@ to zona-segura
   ]
 end
 
+to Go
+  move-bombeiros
+  move-vitimas
+  oxigenio-bombeiros
+end
 
 to setup-turtles
   clear-turtles
@@ -82,6 +88,7 @@ to setup-turtles
   create-bombeiros nBombeiros [
     set shape "person"
     set color red
+    set energia 100
     setxy random-xcor random-ycor
     while [[pcolor] of patch-here = white] [
       setxy random-xcor random-ycor
@@ -91,12 +98,24 @@ to setup-turtles
   create-vitimas nVitimas [
     set shape "person"
     set color yellow
+    set energia 100
     setxy random-xcor random-ycor
     while [[pcolor] of patch-here = white] [
       setxy random-xcor random-ycor
     ]
   ]
 end
+
+to move-bombeiros
+end
+
+
+to move-vitimas
+end
+
+to oxigenio-bombeiros
+end
+
 ]]></code>
   <widgets>
     <view x="940" wrappingAllowedX="true" y="40" frameRate="30.0" minPycor="-16" height="500" showTickCounter="true" patchSize="15.0" fontSize="10" wrappingAllowedY="true" width="500" tickCounterLabel="ticks" maxPycor="16" updateMode="0" maxPxcor="16" minPxcor="-16"></view>
