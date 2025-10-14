@@ -2,9 +2,12 @@
 <model version="NetLogo 7.0.0" snapToGrid="true">
   <code><![CDATA[breed [bombeiros bombeiro]
 breed [vitimas vitima]
-turtles-own [energia]
 
-globals [x y ]
+globals [x y salvo]
+bombeiros-own [capAtual coordTanques knowsSegura]
+vitimas-own [seguir? bombeiro-salvador]
+
+turtles-own[energia]
 
 to setup
   clear-all
@@ -13,8 +16,199 @@ to setup
 
   reset-ticks
 end
+to go
+  move-bombeiros
+    move-vitimas
+  check-energia
+  tick
+end
+to move-bombeiros
+  ask bombeiros [
+    partilhaCoords
+    
+    if energia <= minEnergia [
+      procuraTanque
+      stop
+    ]
 
+    if capAtual = capTransporte and energia > minEnergia[
+      gotoSegura
+      stop
+    ]
 
+    if capAtual < capTransporte and energia > minEnergia [
+      mover
+
+      if any? vitimas-here and pcolor != green[
+           ajudaVitima  
+
+      ]
+
+      set energia energia - 1
+    ]
+  ]
+end
+to move-vitimas
+  ask vitimas with [seguir?] [
+    if bombeiro-salvador != nobody [
+      face bombeiro-salvador
+      fd 0.9  ;; 
+      if [pcolor] of patch-here = green [
+        set seguir? false
+        set bombeiro-salvador nobody
+      ]
+    ]
+  ]
+end
+
+to ajudaVitima
+  if any? vitimas-here [
+    ask one-of vitimas-here [
+      set seguir? true
+      set bombeiro-salvador myself
+    ]
+    set capAtual capAtual + 1
+  ]
+end
+
+to partilhaCoords
+  if pcolor = blue [
+    let current-coord (list pxcor pycor)
+    if not member? current-coord coordTanques [
+      set coordTanques lput current-coord coordTanques
+    ]
+  ]
+
+  if pcolor = green [
+    set knowsSegura 1
+  ]
+
+  let nearby-turtles other turtles-here
+
+  if any? bombeiros-on neighbors[ 
+    ask bombeiros-on neighbors [
+      let neighbor-coords coordTanques
+
+      if not empty? neighbor-coords and not empty? coordTanques [
+        let initial-list coordTanques
+        set coordTanques remove-duplicates (sentence coordTanques neighbor-coords)
+      ]
+
+      if [knowsSegura] of myself = 1 and knowsSegura = 0 [
+        set knowsSegura 1
+      ]
+    ]
+  ]
+end
+to mover ;;;;;fumo
+  let moved? false
+
+  ;; frente
+  if can-move? 1 and [pcolor] of patch-ahead 1 != white [
+    forward 1
+    set moved? true
+  ]
+
+  ;; direita
+  if not moved? [
+    right 90
+    if can-move? 1 and [pcolor] of patch-ahead 1 != white [
+      forward 1
+      set moved? true
+    ]
+    left 90
+  ]
+
+  ;; esquerda
+  if not moved? [
+    left 90
+    if can-move? 1 and [pcolor] of patch-ahead 1 != white [
+      forward 1
+      set moved? true
+    ]
+    right 90
+  ]
+
+  ;; trás
+  if not moved? [
+    right 180
+    if can-move? 1 and [pcolor] of patch-ahead 1 != white [
+      forward 1
+      set moved? true
+    ]
+    right 180
+  ]
+end
+
+to gotoSegura
+  ifelse knowsSegura = 1 [
+    let segura-location patches with [pcolor = green]
+
+    if any? segura-location [
+      let nearest-segura min-one-of segura-location [distance myself]
+
+      face nearest-segura
+      mover
+
+      if pcolor = green [
+        
+          set capAtual 0
+          rt random 360
+      ]
+    ]
+  ][
+    mover
+  ]
+end
+to setup-bordas
+  ask patches with [
+    pxcor = min-pxcor or pxcor = max-pxcor or
+    pycor = min-pycor or pycor = max-pycor
+  ] [
+    set pcolor white
+  ]
+end
+
+to procuraTanque
+    let tanque-location patches with [pcolor = blue]
+
+  if not empty? coordTanques [
+    let aux 0
+    let possiblePatches patch-set []
+
+    foreach coordTanques [
+      let aux2 item aux coordTanques
+      let z int first aux2
+      let w int last aux2
+
+      let currentPatch patch-at z w
+      if currentPatch != nobody [
+        set possiblePatches (patch-set possiblePatches currentPatch)
+      ]
+      set aux aux + 1
+    ]
+  ]
+
+  if any? tanque-location [
+    let nearest-tanque min-one-of tanque-location [distance myself]
+
+    face nearest-tanque
+    mover
+
+    if pcolor = blue 
+      [
+        set energia 100
+        rt random 360
+    ]
+  ]
+end
+to check-energia
+  ask turtles [
+    if energia <= 0 [
+      die
+    ]
+  ]
+end
 
 to setup-patches
   
@@ -22,11 +216,12 @@ to setup-patches
   zona-segura
   setup-fumo
   setup-tanques
+
 end
 
 to setup-obstaculos
   let candidatos patches
-  let n min (list nobstaculos count candidatos)  ;; garante que não pedimos mais patches do que existem
+  let n min (list nobstaculosInicial count candidatos)  ;; garante que não pedimos mais patches do que existem
 
   ask n-of n candidatos [
     set pcolor white 
@@ -76,11 +271,6 @@ to zona-segura
   ]
 end
 
-to Go
-  move-bombeiros
-  move-vitimas
-  oxigenio-bombeiros
-end
 
 to setup-turtles
   clear-turtles
@@ -88,47 +278,49 @@ to setup-turtles
   create-bombeiros nBombeiros [
     set shape "person"
     set color red
-    set energia 100
     setxy random-xcor random-ycor
     while [[pcolor] of patch-here = white] [
       setxy random-xcor random-ycor
     ]
+    set energia energiaInicial
+    set capAtual 0
+    set coordTanques []      
+    set knowsSegura 0
   ]
 
   create-vitimas nVitimas [
     set shape "person"
     set color yellow
-    set energia 100
+    set energia energiaInicial
+    set bombeiro-salvador nobody
+    set seguir? false
     setxy random-xcor random-ycor
     while [[pcolor] of patch-here = white] [
       setxy random-xcor random-ycor
     ]
   ]
 end
-
-to move-bombeiros
-end
-
-
-to move-vitimas
-end
-
-to oxigenio-bombeiros
-end
-
 ]]></code>
   <widgets>
     <view x="940" wrappingAllowedX="true" y="40" frameRate="30.0" minPycor="-16" height="500" showTickCounter="true" patchSize="15.0" fontSize="10" wrappingAllowedY="true" width="500" tickCounterLabel="ticks" maxPycor="16" updateMode="0" maxPxcor="16" minPxcor="-16"></view>
-    <slider x="25" step="1" y="10" max="100" width="250" display="nBombeiros" height="50" min="0" direction="Horizontal" default="44.0" variable="nBombeiros"></slider>
-    <slider x="305" step="1" y="10" max="100" width="250" display="nVitimas" height="50" min="0" direction="Horizontal" default="69.0" variable="nVitimas"></slider>
-    <monitor x="25" precision="17" y="150" height="60" fontSize="11" width="100" display="Tanques">count patches with [pcolor = blue]</monitor>
-    <monitor x="150" precision="17" y="150" height="60" fontSize="11" width="100" display=" obstáculos">count patches with [pcolor = white]</monitor>
-    <slider x="35" step="1" y="80" max="100" width="250" display="ntanques" height="50" min="0" direction="Horizontal" default="13.0" variable="ntanques"></slider>
-    <slider x="290" step="1" y="90" max="100" width="250" display="nobstaculos" height="50" min="0" direction="Horizontal" default="23.0" variable="nobstaculos"></slider>
-    <slider x="555" step="1" y="90" max="100" width="250" display="nfumo" height="50" min="0" direction="Horizontal" default="5.0" variable="nfumo"></slider>
-    <monitor x="275" precision="17" y="165" height="60" fontSize="11" width="100" display="Fumo">count patches with [pcolor = grey]</monitor>
-    <button x="410" y="210" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55" display="Setup">setup</button>
-    <button x="520" y="180" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="63" display="Go">go</button>
+    <button x="35" y="15" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55" display="Setup">setup</button>
+    <button x="105" y="20" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="63" display="Go">go</button>
+    <monitor x="65" precision="17" y="335" height="60" fontSize="11" width="100" display="Tanques">count patches with [pcolor = blue]</monitor>
+    <monitor x="445" precision="17" y="250" height="60" fontSize="11" width="100" display=" obstáculos">count patches with [pcolor = white]</monitor>
+    <monitor x="315" precision="17" y="240" height="60" fontSize="11" width="100" display="Fumo">count patches with [pcolor = grey]</monitor>
+    <chooser x="190" y="5" height="60" variable="TipoModelo" current="0" width="250" display="TipoModelo">
+      <choice type="string" value="Modelo Base"></choice>
+      <choice type="string" value="Modelo Melhorado"></choice>
+    </chooser>
+    <slider x="212" step="1" y="150" max="100" width="150" display="nobstaculosInicial" height="50" min="0" direction="Horizontal" default="23.0" variable="nobstaculosInicial" units="obstaculos"></slider>
+    <slider x="30" step="1" y="150" max="100" width="150" display="ntanques" height="50" min="0" direction="Horizontal" default="13.0" variable="ntanques" units="tanques"></slider>
+    <slider x="395" step="1" y="150" max="100" width="150" display="nfumo" height="50" min="0" direction="Horizontal" default="5.0" variable="nfumo"></slider>
+    <slider x="370" step="1" y="75" max="100" width="150" display="capTransporte" height="50" min="1" direction="Horizontal" default="5.0" variable="capTransporte" units="vitimas"></slider>
+    <slider x="200" step="1" y="75" max="100" width="150" display="nBombeiros" height="50" min="0" direction="Horizontal" default="45.0" variable="nBombeiros" units="bombeiros"></slider>
+    <slider x="30" step="1" y="75" max="100" width="150" display="nVitimas" height="50" min="0" direction="Horizontal" default="33.0" variable="nVitimas" units="vitimas"></slider>
+    <slider x="535" step="1" y="75" max="100" width="250" display="energiaInicial" height="50" min="0" direction="Horizontal" default="61.0" variable="energiaInicial" units="energia"></slider>
+    <slider x="615" step="1" y="145" max="100" width="250" display="minEnergia" height="50" min="0" direction="Horizontal" default="10.0" variable="minEnergia" units="energia"></slider>
+    <monitor x="160" precision="17" y="230" height="60" fontSize="11" width="100" display="Num B">count bombeiros</monitor>
   </widgets>
   <info>## WHAT IS IT?
 
