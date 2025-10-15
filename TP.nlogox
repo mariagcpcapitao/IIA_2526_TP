@@ -3,7 +3,7 @@
   <code><![CDATA[breed [bombeiros bombeiro]
 breed [vitimas vitima]
 
-globals [x y salvo]
+globals [x y salvo custoPorPasso]
 bombeiros-own [capAtual coordTanques knowsSegura]
 vitimas-own [seguir? bombeiro-salvador]
 
@@ -11,14 +11,21 @@ turtles-own[energia]
 
 to setup
   clear-all
+  set custoPorPasso 1
   setup-patches
   setup-turtles
 
   reset-ticks
 end
 to go
+  if tipoModelo = "Modelo Base" [ 
   move-bombeiros
-    move-vitimas
+  move-vitimas
+  ]
+  if tipoModelo = "Modelo Melhorado" [
+  move-bombeiros-inteligentes
+  move-vitimas
+  ]
   check-energia
   tick
 end
@@ -46,6 +53,56 @@ to move-bombeiros
 
       set energia energia - 1
     ]
+  ]
+end
+to move-bombeiros-inteligentes 
+  ask bombeiros [
+    partilhaCoords
+    
+    if energia <= minEnergia [
+      procuraTanque
+      stop
+    ]
+    
+    if capAtual = capTransporte [
+      gotoSegura
+      stop
+    ]
+    
+    ;;caso contrario, avaliar antes de se mover
+    let nearest-tanque nobody
+    let nearest-segura nobody
+    
+    if any? patches with [pcolor = blue] [
+      set nearest-tanque min-one-of patches with [pcolor = blue] [distance myself]
+    ]
+    if any? patches with [pcolor = green] [
+      set nearest-segura min-one-of patches with [pcolor = green] [distance myself]
+    ]
+    
+    ;;estimativa de energia mínima necessária para voltar
+    let distTanque 0
+    if nearest-tanque != nobody [
+      set distTanque distance nearest-tanque
+    ]
+    
+    let distSegura 0
+    if nearest-segura != nobody [
+      set distSegura distance nearest-segura
+    ]
+    
+    ;;se não tem energia suficiente para voltar ao ponto mais proximo, nao avança
+    let energiaNecessaria (min list distTanque distSegura) * custoPorPasso * 1.2 ;;
+    if energia <= energiaNecessaria [
+      procuraTanque
+      stop
+    ]
+    
+    ;;caso contrario, comportamento modelo base
+    mover
+    if any? vitimas-here and pcolor != green [ 
+      ajudaVitima ]
+    set energia energia - 1
   ]
 end
 to move-vitimas
