@@ -5,7 +5,7 @@ breed [vitimas vitima]
 
 globals [x y salvo custoPorPasso]
 bombeiros-own [capAtual coordTanques knowsSegura]
-vitimas-own [seguir? bombeiro-salvador]
+vitimas-own [seguir? bombeiro-salvador tempo-espera estado-critico]
 
 turtles-own[energia]
 
@@ -97,7 +97,16 @@ to move-bombeiros-inteligentes
       procuraTanque
       stop
     ]
-    
+    ;;procurar vítimas próximas e dar prioridade às mais críticas
+    let vitimas-proximas vitimas in-radius 5 with [not seguir?]
+    if any? vitimas-proximas [
+      let alvo max-one-of vitimas-proximas [estado-critico]
+      face alvo
+      mover
+      if any? vitimas-here and pcolor != green [ ajudaVitima ]
+      set energia energia - custoPorPasso
+      stop
+    ]
     ;;caso contrario, comportamento modelo base
     mover
     if any? vitimas-here and pcolor != green [ 
@@ -120,14 +129,24 @@ end
 
 to ajudaVitima
   if any? vitimas-here [
-    ask one-of vitimas-here [
+    let vitima-prioritaria max-one-of vitimas-here [estado-critico]
+    ask vitima-prioritaria [
       set seguir? true
       set bombeiro-salvador myself
     ]
     set capAtual capAtual + 1
   ]
 end
-
+to update-vitimas
+  ask vitimas with [not seguir?] [
+    set tempo-espera tempo-espera + 1
+    if tempo-espera > 50 and estado-critico < 3 [
+      set estado-critico estado-critico + 1
+      if estado-critico = 2 [ set color orange ]
+      if estado-critico = 3 [ set color red ]
+    ]
+  ]
+end 
 to partilhaCoords
   if pcolor = blue [
     let current-coord (list pxcor pycor)
@@ -355,6 +374,11 @@ to setup-turtles
     while [[pcolor] of patch-here = white] [
       setxy random-xcor random-ycor
     ]
+set estado-critico one-of (list 1 2 3)  ;; 1=leve, 2=médio, 3=crítico
+  if estado-critico = 3 [ set color red ]
+  if estado-critico = 2 [ set color orange ]
+  if estado-critico = 1 [ set color yellow ]
+  set tempo-espera 0
   ]
 end
 ]]></code>
