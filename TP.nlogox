@@ -3,7 +3,7 @@
   <code><![CDATA[breed [bombeiros bombeiro]
 breed [vitimas vitima]
 
-globals [x y salvo custoPorPasso]
+globals [x y salvo custoPorPasso tickUltimoEvento intervaloEvento]
 bombeiros-own [capAtual coordTanques knowsSegura grupo]
 vitimas-own [seguir? bombeiro-salvador tempo-espera estado-critico]
 
@@ -14,7 +14,9 @@ to setup
   set custoPorPasso 1
   setup-patches
   setup-turtles
-
+  set tickUltimoEvento 0
+  set intervaloEvento 30
+  set nColapsos 5
   reset-ticks
 end
 to go
@@ -27,6 +29,8 @@ to go
   move-bombeiros-equipa
   move-bombeiros-inteligentes
   move-vitimas
+  update-vitimas
+  eventos-dinamicos
   ]
   check-energia
   tick
@@ -225,7 +229,10 @@ to mover ;;;;;fumo
     forward 1
     set moved? true
   ]
-
+  if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
+    forward 1
+    set moved? true
+  ]
   ;; direita
   if not moved? [
     right 90
@@ -235,7 +242,14 @@ to mover ;;;;;fumo
     ]
     left 90
   ]
-
+  if not moved? [
+    right 90
+    if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
+      forward 1
+      set moved? true
+    ]
+    left 90
+  ]
   ;; esquerda
   if not moved? [
     left 90
@@ -245,11 +259,26 @@ to mover ;;;;;fumo
     ]
     right 90
   ]
-
+  if not moved? [
+    left 90
+    if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
+      forward 1
+      set moved? true
+    ]
+    right 90
+  ]
   ;; trás
   if not moved? [
     right 180
     if can-move? 1 and [pcolor] of patch-ahead 1 != white [
+      forward 1
+      set moved? true
+    ]
+    right 180
+  ]
+  if not moved? [
+    right 180
+    if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
       forward 1
       set moved? true
     ]
@@ -365,7 +394,19 @@ to setup-fumo
   ]
     
 end
-
+to eventos-dinamicos
+  ;;verifica se passou o tempo suficiente desde o último evento
+  if ticks - tickUltimoEvento >= intervaloEvento [
+    set tickUltimoEvento ticks
+    
+    let candidatos patches with [pcolor != white and pcolor != green and pcolor != blue]
+    if any? candidatos [
+      ask n-of nColapsos candidatos [
+        set pcolor brown
+      ]
+    ]
+  ]
+end
 to zona-segura
   let valido? false
 
