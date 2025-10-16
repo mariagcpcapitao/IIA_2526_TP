@@ -4,7 +4,7 @@
 breed [vitimas vitima]
 
 globals [x y salvo custoPorPasso]
-bombeiros-own [capAtual coordTanques knowsSegura]
+bombeiros-own [capAtual coordTanques knowsSegura grupo]
 vitimas-own [seguir? bombeiro-salvador tempo-espera estado-critico]
 
 turtles-own[energia]
@@ -23,6 +23,8 @@ to go
   move-vitimas
   ]
   if tipoModelo = "Modelo Melhorado" [
+  forma-equipas
+  move-bombeiros-equipa
   move-bombeiros-inteligentes
   move-vitimas
   ]
@@ -147,6 +149,45 @@ to update-vitimas
     ]
   ]
 end 
+to forma-equipas
+  ask bombeiros [
+    if grupo = 0 [
+      let candidato one-of other bombeiros with [grupo = 0 and distance myself < 5]
+      if candidato != nobody [
+        set grupo who
+        ask candidato [set grupo [grupo] of myself]
+      ]
+    ]
+  ]
+end
+to move-bombeiros-equipa
+  ask bombeiros [
+    if energia <= minEnergia [
+      procuraTanque 
+      stop
+    ]
+    if capAtual = capTransporte and energia > minEnergia [
+      gotoSegura 
+      stop
+    ]
+
+    if capAtual < capTransporte and energia > minEnergia [
+      if grupo != 0 [
+        ;; mover em conjunto com o parceiro
+        let parceiros bombeiros with [grupo = [grupo] of myself and self != myself]
+        if any? parceiros [
+          let centro-x mean [xcor] of parceiros
+          let centro-y mean [ycor] of parceiros
+          face patch centro-x centro-y
+          mover
+        ]
+      ] 
+      if grupo = 0 [mover]
+      if any? vitimas-here and pcolor != green [ajudaVitima]
+      set energia energia - 1
+    ]
+  ]
+end
 to partilhaCoords
   if pcolor = blue [
     let current-coord (list pxcor pycor)
