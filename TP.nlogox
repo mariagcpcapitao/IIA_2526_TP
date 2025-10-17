@@ -246,66 +246,24 @@ to partilhaCoords
 end
 to mover ;;;;;fumo
   let moved? false
-
-  ;; frente
-  if can-move? 1 and [pcolor] of patch-ahead 1 != white [
-    forward 1
-    set moved? true
-  ]
-  if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
-    forward 1
-    set moved? true
-  ]
-  ;; direita
-  if not moved? [
-    right 90
-    if can-move? 1 and [pcolor] of patch-ahead 1 != white [
+  let directions [0 90 -90 180]  ;; forward, right, left, back
+  
+  foreach directions [
+      if can-move? 1 and [pcolor] of patch-ahead 1 != white and [pcolor] of patch-ahead 1 != brown [
       forward 1
       set moved? true
+      stop  ;; exit foreach after successful move
     ]
-    left 90
   ]
+  
+  ;; If still not moved, try any non-obstacle direction
   if not moved? [
-    right 90
-    if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
-      forward 1
-      set moved? true
+    let possible-patches patches in-cone 3 180 with [pcolor != white and pcolor != brown]
+    if any? possible-patches [
+      let target min-one-of possible-patches [distance myself]
+      face target
+      if can-move? 1 [ forward 1 ]
     ]
-    left 90
-  ]
-  ;; esquerda
-  if not moved? [
-    left 90
-    if can-move? 1 and [pcolor] of patch-ahead 1 != white [
-      forward 1
-      set moved? true
-    ]
-    right 90
-  ]
-  if not moved? [
-    left 90
-    if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
-      forward 1
-      set moved? true
-    ]
-    right 90
-  ]
-  ;; trás
-  if not moved? [
-    right 180
-    if can-move? 1 and [pcolor] of patch-ahead 1 != white [
-      forward 1
-      set moved? true
-    ]
-    right 180
-  ]
-  if not moved? [
-    right 180
-    if can-move? 1 and [pcolor] of patch-ahead 1 != brown [
-      forward 1
-      set moved? true
-    ]
-    right 180
   ]
 end
 
