@@ -29,6 +29,7 @@ to go
   move-bombeiros-equipa
   move-bombeiros-inteligentes
   move-vitimas
+  move-vitimas-panic
   update-vitimas
   eventos-dinamicos
   ]
@@ -132,7 +133,29 @@ to move-vitimas
     ]
   ]
 end
-
+to move-vitimas-panic
+  ask vitimas [
+    if seguir? [
+      if bombeiro-salvador != nobody [
+        face bombeiro-salvador
+        fd 0.9
+        if [pcolor] of patch-here = green [
+          set seguir? false
+          set bombeiro-salvador nobody
+        ]
+      ]
+    ]
+    if not seguir? [
+      rt random 60 - random 60
+      if can-move? 0.5 and [pcolor] of patch-ahead 0.5 != white [
+        fd 0.5
+      ]
+      if random 100 < 5 [
+        rt random 360
+      ]
+    ]
+  ]
+end
 to ajudaVitima
   if any? vitimas-here [
     let vitima-prioritaria max-one-of vitimas-here [estado-critico]
