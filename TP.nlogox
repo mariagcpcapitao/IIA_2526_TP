@@ -479,11 +479,6 @@ to setup-turtles
     while [[pcolor] of patch-here = white] [
       setxy random-xcor random-ycor
     ]
-set estado-critico one-of (list 1 2 3)  ;; 1=leve, 2=médio, 3=crítico
-  if estado-critico = 3 [ set color red ]
-  if estado-critico = 2 [ set color orange ]
-  if estado-critico = 1 [ set color yellow ]
-  set tempo-espera 0
   ]
 end
 ]]></code>
